@@ -12,6 +12,7 @@
   "author": "emersion",
   "license": "MIT",
   "dependencies": {
-  	"unparse": "^1.2.19-alpha.9"
+    "express": "^4.13.0",
+    "unparse": "git@github.com:unparse/node-unparse.git"
   }
 }
