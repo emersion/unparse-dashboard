@@ -1,0 +1,15 @@
+{
+  "connection": {
+    "adapter": "disk"
+  },
+  "appId": "519e32bde6ce6398dedd6217ed3aea09b086ab6d",
+  "javascriptKey": "47a980ec12488c672775f64803c68f2e1cc77182",
+  "restKey": "20149bac5229a250b10b5a8cbdabb2082c7aae54",
+  "session": {
+    "name": "unparse",
+    "keys": [
+      "change",
+      "this"
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "unparse-dashboard",
+  "version": "0.0.1",
+  "description": "A UI to manage Unparse data.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "init": "node_modules/.bin/unparse init --config-file=config.json",
+    "start": "node index.js"
+  },
+  "author": "emersion",
+  "license": "MIT",
+  "dependencies": {
+  	"unparse": "^1.2.19-alpha.9"
+  }
+}
