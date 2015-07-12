@@ -54,13 +54,41 @@
 						<span class="caret"></span>
 					</button>
 					<ul class="dropdown-menu dropdown-menu-right" role="menu" ng-click="$event.preventDefault()">
-						<li><a href="#">Delete column</a></li>
-						<li><a href="#">Delete all rows</a></li>
-						<li><a href="#">Drop class</a></li>
+						<li class="disabled"><a href="#">Delete column</a></li>
+						<li class="disabled"><a href="#">Delete all rows</a></li>
+						<li><a href="#" ng-click="dropClass()">Drop class</a></li>
 					</ul>
+				</div>
+				<div class="btn-group" role="group">
+					<button type="button" class="btn btn-default" ng-model="filteringRows" btn-checkbox>
+						<span class="glyphicon glyphicon-filter"></span>
+						Filter
+					</button>
 				</div>
 
 				<p></p>
+
+				<div class="filter container" ng-show="filteringRows" ng-controller="RowFilterCtrl">
+					<div class="list-group">
+						<div class="list-group-item form-inline" ng-repeat="(attr, val) in rowFilter">
+							<a href="#" ng-click="removeConstraint(attr);$event.preventDefault();" class="pull-right"><span class="glyphicon glyphicon-trash"></span></a>
+							{{ attr }} equals <input type="text" ng-model="rowFilter[attr]" class="form-control" placeholder="Value">
+						</div>
+						<div class="list-group-item form-inline" ng-show="addingConstraint">
+							<select ng-model="newConstraintAttribute" class="form-control">
+								<option value="" selected disabled class="hidden">Attribute</option>
+								<option>objectId</option>
+								<option>createdAt</option>
+								<option>updatedAt</option>
+								<option ng-repeat="(attributeName, attributeData) in openedClass.get('attributes')">{{ attributeName }}</option>
+							</select>
+							equals
+							<input type="{{ getInputTypeForColumn(newConstraintAttribute) }}" ng-model="newConstraintValue" class="form-control" placeholder="Value">
+							<button class="btn btn-primary" ng-click="submitConstraint()">Add</button>
+						</div>
+						<a href="#" class="list-group-item" ng-click="addConstraint();$event.preventDefault();" ng-hide="addingConstraint">Add a new constraint...</a>
+					</div>
+				</div>
 
 				<table class="table table-bordered table-condensed">
 					<thead>
@@ -69,7 +97,7 @@
 							<th>createdAt</th>
 							<th>updatedAt</th>
 							<th>ACL</th>
-							<th ng-repeat="(attributeName, attributeData) in openedClass.get('attributes')">{{ attributeName }}</th>
+							<th ng-repeat="(attributeName, attributeData) in openedClass.get('attributes')" ng-click="selectColumn(attributeName)" ng-class="{ active: attributeName == activeColumn }">{{ attributeName }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -81,11 +109,11 @@
 							<td ng-repeat="(attributeName, attributeData) in openedClass.get('attributes')">{{ row.get(attributeName) }}</td>
 						</tr>
 						<tr ng-if="addingNewRow">
-							<td colspan="3" class="text-center">
+							<td colspan="4" class="text-center">
 								<button class="btn btn-success" ng-click="saveNewRow(newRowData)">Save row</button>
 							</td>
 							<td ng-repeat="(attributeName, attributeData) in openedClass.get('attributes')">
-								<input type="text" ng-model="newRowData[attributeName]" class="form-control">
+								<input type="{{ getInputTypeForType(attributeData.type) }}" ng-model="newRowData[attributeName]" class="form-control">
 							</td>
 						</tr>
 					</tbody>

@@ -37,6 +37,10 @@ app.controller('MainCtrl', ['$scope', '$q', '$modal', function ($scope, $q, $mod
 		$scope.openedClass = c;
 	};
 
+	$scope.selectFirstClass = function () {
+		return $scope.openClass($scope.classesList[0]);
+	};
+
 	$scope.addClass = function () {
 		var modal = $modal.open({
 			templateUrl: 'add-class-modal'
@@ -78,10 +82,6 @@ app.controller('ClassesListCtrl', ['$scope', '$q', function ($scope, $q) {
 		});
 	};
 
-	$scope.selectFirstClass = function () {
-		return $scope.openClass($scope.classesList[0]);
-	};
-
 	$scope.loadClasses().then(function () {
 		return $scope.selectFirstClass();
 	});
@@ -89,6 +89,8 @@ app.controller('ClassesListCtrl', ['$scope', '$q', function ($scope, $q) {
 
 app.controller('OpenedClassCtrl', ['$scope', '$q', '$modal', function ($scope, $q, $modal) {
 	$scope.activeRow = null;
+	$scope.activeColumn = null;
+	$scope.rowFilter = {};
 	$scope.openedRows = [];
 
 	$scope.$watch('openedClass', function (c) {
@@ -96,16 +98,33 @@ app.controller('OpenedClassCtrl', ['$scope', '$q', '$modal', function ($scope, $
 
 		$scope.addingNewRow = false;
 		$scope.activeRow = null;
+		$scope.activeColumn = null;
+		$scope.rowFilter = {};
 		$scope.openedRows = [];
 
+		$scope.loadRows();
+	});
+
+	$scope.loadRows = function () {
+		var c = $scope.openedClass;
 		var query = new Parse.Query(c.get('name'));
+
+		for (var name in $scope.rowFilter) {
+			var val = $scope.rowFilter[name];
+			query.equalTo(name, val);
+		}
+
 		return $q.when(query.find()).then(function (rows) {
 			$scope.openedRows = rows;
 		});
-	});
+	};
 
 	$scope.selectRow = function (row) {
 		$scope.activeRow = row;
+	};
+
+	$scope.selectColumn = function (column) {
+		$scope.activeColumn = column;
 	};
 
 	$scope.addColumn = function () {
@@ -130,6 +149,32 @@ app.controller('OpenedClassCtrl', ['$scope', '$q', '$modal', function ($scope, $
 	$scope.addRow = function () {
 		$scope.addingNewRow = true;
 		$scope.newRowData = {};
+	};
+
+	$scope.getInputTypeForType = function (type) {
+		if (type == 'integer') {
+			return 'number';
+		}
+		if (type == 'boolean') {
+			return 'checkbox';
+		}
+		if (type == 'date' || type == 'datetime' || type == 'time') {
+			return type;
+		}
+		return 'text';
+	};
+
+	$scope.getInputTypeForColumn = function (columnName) {
+		if (!columnName) return 'text';
+		if (columnName == 'objectId') return 'text';
+		if (columnName == 'createdAt' || columnName == 'updatedAt') return 'datetime';
+
+		if (!$scope.openedClass) return 'text';
+		var columnData = $scope.openedClass.get('attributes')[columnName];
+		if (!columnData) {
+			return 'text';
+		}
+		return $scope.getInputTypeForType(columnData.type);
 	};
 
 	$scope.saveNewRow = function (data) {
@@ -224,5 +269,66 @@ app.controller('OpenedClassCtrl', ['$scope', '$q', '$modal', function ($scope, $
 		}, function () {}).catch(function (err) {
 			$scope.showError(err);
 		});
+	};
+
+	$scope.dropClass = function () {
+		var c = $scope.openedClass;
+
+		if (c.get('name')[0] == '_') {
+			if (c.get('name')[1] == '_') {
+				return $scope.showError('Cannot delete a system class.');
+			}
+			res = confirm('This will delete a base class. Do you want to continue?');
+			if (!res) {
+				return;
+			}
+		}
+
+		var res = prompt('You are about to delete this class. To confirm, type the name of this class below:');
+		if (res != c.get('name')) {
+			return;
+		}
+
+		var index = $scope.classesList.indexOf(c);
+		$q.when(c.destroy()).then(function () {
+			$scope.classesList.splice(index, 1);
+			$scope.selectFirstClass();
+		}, function (err) {
+			$scope.showError(err);
+		});
+	};
+}]);
+
+app.controller('RowFilterCtrl', ['$scope', function ($scope) {
+	$scope.$watch('filteringRows', function (val) {
+		if (val) {
+			$scope.addConstraint();
+		} else {
+			for (var name in $scope.rowFilter) {
+				delete $scope.rowFilter[name];
+			}
+		}
+	});
+
+	$scope.addConstraint = function () {
+		$scope.addingConstraint = true;
+	};
+
+	$scope.submitConstraint = function () {
+		var name = $scope.newConstraintAttribute,
+			val = $scope.newConstraintValue;
+
+		if (!name) return;
+
+		$scope.rowFilter[name] = val;
+
+		$scope.addingConstraint = false;
+
+		$scope.loadRows();
+	};
+
+	$scope.removeConstraint = function (name) {
+		delete $scope.rowFilter[name];
+		$scope.loadRows();
 	};
 }]);
