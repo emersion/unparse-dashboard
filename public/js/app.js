@@ -31,14 +31,35 @@ app.directive('template', ['$templateCache', function ($templateCache) {
 }]);
 
 app.controller('MainCtrl', ['$scope', '$q', '$modal', function ($scope, $q, $modal) {
+	$scope.currentUser = Parse.User.current();
 	$scope.classesList = [];
 
 	$scope.openClass = function (c) {
 		$scope.openedClass = c;
 	};
 
+	$scope.loadClasses = function () {
+		$scope.classesList = [];
+
+		var query = new Parse.Query(Class);
+		return $q.when(query.find()).then(function (classes) {
+			console.log(classes);
+			for (var i = 0; i < classes.length; i++) {
+				$scope.classesList.push(classes[i]);
+			}
+		}, function (err) {
+			$scope.showError(err);
+		});
+	};
+
 	$scope.selectFirstClass = function () {
 		return $scope.openClass($scope.classesList[0]);
+	};
+
+	$scope.loadData = function () {
+		return $scope.loadClasses().then(function () {
+			return $scope.selectFirstClass();
+		});
 	};
 
 	$scope.addClass = function () {
@@ -67,24 +88,50 @@ app.controller('MainCtrl', ['$scope', '$q', '$modal', function ($scope, $q, $mod
 
 		$scope.errorMessage = msg;
 	};
-}])
 
-app.controller('ClassesListCtrl', ['$scope', '$q', function ($scope, $q) {
-	$scope.loadClasses = function () {
-		var query = new Parse.Query(Class);
-		return $q.when(query.find()).then(function (classes) {
-			console.log(classes);
-			for (var i = 0; i < classes.length; i++) {
-				$scope.classesList.push(classes[i]);
+	$scope.login = function () {
+		if ($scope.currentUser) {
+			return $scope.loadData();
+		}
+
+		var modal = $modal.open({
+			templateUrl: 'login-modal',
+			windowClass: 'login-modal'
+		});
+
+		modal.result.then(function (data) {
+			var promise = Parse.User.logIn(data.username, data.password);
+			return $q.when(promise);
+		}, function () {}).then(function (user) {
+			if (user) {
+				$scope.currentUser = user;
 			}
+
+			return $scope.loadData();
 		}, function (err) {
 			$scope.showError(err);
 		});
 	};
 
-	$scope.loadClasses().then(function () {
-		return $scope.selectFirstClass();
-	});
+	$scope.logout = function () {
+		Parse.User.logOut();
+		$scope.currentUser = null;
+
+		return $scope.loadData();
+	};
+
+	$scope.login();
+}])
+
+app.controller('ClassesListCtrl', ['$scope', '$q', function ($scope, $q) {
+	$scope.getClassIcon = function (className) {
+		var icons = {
+			'_User': 'user',
+			'_Role': 'tower',
+			'_Installation': 'phone'
+		};
+		return icons[className] || 'th-list';
+	};
 }]);
 
 app.controller('OpenedClassCtrl', ['$scope', '$q', '$modal', function ($scope, $q, $modal) {
@@ -116,6 +163,8 @@ app.controller('OpenedClassCtrl', ['$scope', '$q', '$modal', function ($scope, $
 
 		return $q.when(query.find()).then(function (rows) {
 			$scope.openedRows = rows;
+		}, function (err) {
+			$scope.showError(err);
 		});
 	};
 
@@ -151,6 +200,7 @@ app.controller('OpenedClassCtrl', ['$scope', '$q', '$modal', function ($scope, $
 		$scope.newRowData = {};
 	};
 
+	$scope.inputTypes = ['text', 'number', 'checkbox', 'date', 'datetime', 'time'];
 	$scope.getInputTypeForType = function (type) {
 		if (type == 'integer') {
 			return 'number';
@@ -191,6 +241,8 @@ app.controller('OpenedClassCtrl', ['$scope', '$q', '$modal', function ($scope, $
 		return $q.when(row.save()).then(function (row) {
 			$scope.openedRows.push(row);
 			$scope.addingNewRow = false;
+		}, function (err) {
+			$scope.showError(err);
 		});
 	};
 
@@ -237,7 +289,8 @@ app.controller('OpenedClassCtrl', ['$scope', '$q', '$modal', function ($scope, $
 
 		var modal = $modal.open({
 			templateUrl: 'change-acl-modal',
-			scope: childScope
+			scope: childScope,
+			controller: 'ChangeACLCtrl'
 		});
 
 		modal.result.then(function (data) {
@@ -259,7 +312,8 @@ app.controller('OpenedClassCtrl', ['$scope', '$q', '$modal', function ($scope, $
 
 		var modal = $modal.open({
 			templateUrl: 'change-acl-modal',
-			scope: childScope
+			scope: childScope,
+			controller: 'ChangeACLCtrl'
 		});
 
 		modal.result.then(function (data) {
@@ -299,6 +353,17 @@ app.controller('OpenedClassCtrl', ['$scope', '$q', '$modal', function ($scope, $
 	};
 }]);
 
+app.controller('ChangeACLCtrl', ['$scope', function ($scope) {
+	$scope.addNewTarget = function (target) {
+		$scope.ACL[target] = {};
+		$scope.newTarget = '';
+	};
+
+	$scope.deleteTarget = function (target) {
+		delete $scope.ACL[target];
+	};
+}]);
+
 app.controller('RowFilterCtrl', ['$scope', function ($scope) {
 	$scope.$watch('filteringRows', function (val) {
 		if (val) {
@@ -309,6 +374,11 @@ app.controller('RowFilterCtrl', ['$scope', function ($scope) {
 			}
 		}
 	});
+
+	$scope.$watch('rowFilter', function (filter) {
+		if (!$scope.openedClass) return;
+		$scope.loadRows();
+	}, true);
 
 	$scope.addConstraint = function () {
 		$scope.addingConstraint = true;
@@ -323,12 +393,9 @@ app.controller('RowFilterCtrl', ['$scope', function ($scope) {
 		$scope.rowFilter[name] = val;
 
 		$scope.addingConstraint = false;
-
-		$scope.loadRows();
 	};
 
 	$scope.removeConstraint = function (name) {
 		delete $scope.rowFilter[name];
-		$scope.loadRows();
 	};
 }]);

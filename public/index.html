@@ -20,7 +20,10 @@
 		<div class="row">
 			<div class="col-md-2" ng-controller="ClassesListCtrl">
 				<div class="list-group">
-					<a href="#" ng-repeat="c in classesList" ng-click="openClass(c);$event.preventDefault();" ng-class="{ active: openedClass == c }" class="list-group-item">{{ c.get('name') }}</a>
+					<a href="#" ng-repeat="c in classesList" ng-click="openClass(c);$event.preventDefault();" ng-class="{ active: openedClass == c }" class="list-group-item">
+						<span class="glyphicon glyphicon-{{ getClassIcon(c.get('name')) }}"></span>
+						{{ c.get('name') }}
+					</a>
 				</div>
 
 				<div class="btn-group" role="group">
@@ -31,6 +34,16 @@
 				</div>
 			</div>
 			<div class="col-md-10" ng-controller="OpenedClassCtrl" ng-show="openedClass">
+				<div class="pull-right">
+					<div ng-show="currentUser">
+						{{ currentUser.get('username') }}
+						<button class="btn btn-default" ng-click="logout()">Sign out</button>
+					</div>
+					<div ng-show="!currentUser">
+						<button class="btn btn-default" ng-click="login()">Sign in</button>
+					</div>
+				</div>
+
 				<div class="btn-group" role="group">
 					<button type="button" class="btn btn-default" ng-click="addRow()">
 						<span class="glyphicon glyphicon-plus"></span>
@@ -72,7 +85,8 @@
 					<div class="list-group">
 						<div class="list-group-item form-inline" ng-repeat="(attr, val) in rowFilter">
 							<a href="#" ng-click="removeConstraint(attr);$event.preventDefault();" class="pull-right"><span class="glyphicon glyphicon-trash"></span></a>
-							{{ attr }} equals <input type="text" ng-model="rowFilter[attr]" class="form-control" placeholder="Value">
+							{{ attr }} equals
+							<input type="{{ getInputTypeForColumn(attr) }}" ng-model="rowFilter[attr]" class="form-control" placeholder="Value">
 						</div>
 						<div class="list-group-item form-inline" ng-show="addingConstraint">
 							<select ng-model="newConstraintAttribute" class="form-control">
@@ -106,7 +120,10 @@
 							<td>{{ row.createdAt }}</td>
 							<td>{{ row.updatedAt }}</td>
 							<td ng-dblclick="changeRowACL(row)">{{ row.getACL() }}</td>
-							<td ng-repeat="(attributeName, attributeData) in openedClass.get('attributes')">{{ row.get(attributeName) }}</td>
+							<td ng-repeat="(attributeName, attributeData) in openedClass.get('attributes')">
+								<span ng-if="attributeData.protected" class="text-muted">(hidden)</span>
+								<span ng-if="!attributeData.protected">{{ row.get(attributeName) }}</span>
+							</td>
 						</tr>
 						<tr ng-if="addingNewRow">
 							<td colspan="4" class="text-center">
@@ -175,6 +192,7 @@
 				<thead>
 					<th>Target</th>
 					<th ng-repeat="action in actions">{{ action }}</th>
+					<th></th>
 				</thead>
 				<tbody>
 					<tr ng-repeat="(target, rights) in ACL">
@@ -182,6 +200,24 @@
 						<td ng-repeat="action in actions">
 							<input type="checkbox" ng-model="rights[action]">
 						</td>
+						<td>
+							<a href="#" ng-click="deleteTarget(target);$event.preventDefault();">
+								<span class="glyphicon glyphicon-trash"></span>
+							</a>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="{{ actions.length + 1 }}">
+							<div class="input-group">
+								<input type="text" ng-model="newTarget" placeholder="Role or user" class="form-control">
+								<span class="input-group-btn">
+									<button class="btn btn-default" type="button" ng-click="addNewTarget(newTarget)">
+										<span class="glyphicon glyphicon-plus"></span>
+									</button>
+								</span>
+							</div>
+						</td>
+						<td></td>
 					</tr>
 				</tbody>
 			</table>
@@ -189,6 +225,30 @@
 		<div class="modal-footer">
 			<button class="btn btn-default" ng-click="$dismiss()">Cancel</button>
 			<button class="btn btn-primary" ng-click="$close(ACL)">OK</button>
+		</div>
+	</template>
+
+	<template id="login-modal">
+		<div class="modal-header">
+			<h3 class="modal-title">Login</h3>
+		</div>
+		<div class="modal-body form-horizontal">
+			<div class="form-group">
+				<label for="loginUsername" class="col-sm-2 control-label">Username</label>
+				<div class="col-sm-10">
+					<input type="text" ng-model="username" id="loginUsername" class="form-control">
+				</div>
+			</div>
+			<div class="form-group">
+				<label for="loginPassword" class="col-sm-2 control-label">Password</label>
+				<div class="col-sm-10">
+					<input type="password" ng-model="password" id="loginPassword" class="form-control">
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button class="btn btn-default" ng-click="$dismiss()">Sign in as anonymous</button>
+			<button class="btn btn-primary" ng-click="$close(this)">Sign in</button>
 		</div>
 	</template>
 
